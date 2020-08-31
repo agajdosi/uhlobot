@@ -1,0 +1,75 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/agajdosi/uhlobot/parlamentni"
+	"github.com/chromedp/chromedp"
+	"github.com/spf13/viper"
+)
+
+func main() {
+	viper.SetConfigName("bots")
+	viper.SetConfigType("toml")
+	viper.AddConfigPath(".")
+	err := viper.ReadInConfig()
+	if err != nil {
+		panic(fmt.Errorf("fatal error config file: %s", err))
+	}
+
+	bots := viper.GetStringSlice("bots")
+
+	for _, bot := range bots {
+		if viper.Get(bot+".parlamentni.password") == nil {
+			continue
+		}
+
+		//url := "https://www.parlamentnilisty.cz/arena/monitor/Ovlivnovani-deti-vyber-pohlavi-ideologie-na-skolach-a-diktat-mensin-Detsky-psychiatr-vypustil-zasadni-varovani-Rodice-pozor-635311/diskuse"
+
+		ctx, cancel := createBrowser()
+		parlamentni.Login(ctx, cancel, bot)
+		//parlamentni.Comment(ctx, cancel, url, "Nesouhlas", "Tomu se mi nechce moc věřit, zní to dost vyumělkovaně.")
+
+		chromedp.Cancel(*ctx)
+		fmt.Println("success!")
+	}
+
+	/* 	config, err := toml.LoadFile("bots.toml")
+	   	if err != nil {
+	   		fmt.Println(err)
+	   	}
+
+	   	bots := config.Get("bot").([]*toml.Tree)
+	   	for _, bot := range bots {
+	   		ctx, cancel := createBrowser()
+	   		mail := bot.Get("parlamentni.password").(string)
+
+	   		if bot.Get("parlamentni.password") == nil {
+	   			parlamentni.Register(ctx, cancel, mail)
+	   		} else {
+	   			continue
+	   		} */
+
+	//username := bot.Get("mail").(string)
+	//password := bot.Get("parlamentni.password").(string)
+
+	//}
+
+}
+
+func createBrowser() (*context.Context, *context.CancelFunc) {
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.DisableGPU,
+		chromedp.Flag("disable-extensions", false),
+		chromedp.Flag("headless", false),
+		//chromedp.UserDataDir("config"),
+	)
+
+	ctx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	ctx, cancel = chromedp.NewContext(ctx)
+	ctx, cancel = context.WithTimeout(ctx, 300*time.Second)
+
+	return &ctx, &cancel
+}
